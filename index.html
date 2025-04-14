@@ -238,11 +238,13 @@
       
       // Update speed description
       let speedDescription;
-      if (gameSpeed <= 3) speedDescription = "(Slow)";
-      else if (gameSpeed <= 7) speedDescription = "(Normal)";
-      else speedDescription = "(Fast)";
+      if (gameSpeed <= 2) speedDescription = "(Very Slow)";
+      else if (gameSpeed >2 && gameSpeed <=4) speedDescription = "(Slow)";
+      else if (gameSpeed >4 && gameSpeed <=7) speedDescription = "(Normal)";
+      else if (gameSpeed >7 && gameSpeed <=9) speedDescription = "(Fast)";  
+      else speedDescription = "(Very Fast)";
       
-      speedValue.textContent = gameSpeed + " " + speedDescription;
+      speedValue.textContent = speedDescription;
     });
     
     // Initialize the game
