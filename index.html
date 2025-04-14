@@ -52,6 +52,9 @@
       margin-bottom: 10px;
       font-size: 20px;
       font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
     }
     .game-over {
       position: absolute;
@@ -67,36 +70,7 @@
       margin-top: 0;
     }
     
-    /* Joystick styles */
-    .joystick-container {
-      position: relative;
-      width: 150px;
-      height: 150px;
-      margin-top: 20px;
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: none;
-    }
-    .joystick-base {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      background-color: rgba(0, 0, 0, 0.1);
-      border: 2px solid #333;
-    }
-    .joystick-stick {
-      position: absolute;
-      width: 40%;
-      height: 40%;
-      border-radius: 50%;
-      background-color: #4CAF50;
-      border: 2px solid #2E7D32;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      cursor: pointer;
-    }
+    /* D-Pad styles */
     .d-pad {
       display: grid;
       grid-template-columns: repeat(3, 50px);
@@ -127,15 +101,59 @@
       background: none;
       border: none;
     }
+    
+    /* Settings panel */
+    .settings-panel {
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      width: 80%;
+      max-width: 400px;
+    }
+    .settings-panel h2 {
+      margin-top: 0;
+      text-align: center;
+    }
+    .slider-container {
+      margin: 15px 0;
+    }
+    .slider-container label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    .slider-container input {
+      width: 100%;
+    }
+    .value-display {
+      text-align: center;
+      margin-top: 5px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
   <div class="game-container">
-    <div class="score-container">Score: <span id="score">0</span></div>
+    <!-- Settings Panel -->
+    <div class="settings-panel" id="settings-panel">
+      <h2>Game Settings</h2>
+      <div class="slider-container">
+        <label for="speed-slider">Snake Speed:</label>
+        <input type="range" id="speed-slider" min="1" max="10" value="5" class="slider">
+        <div class="value-display">Speed: <span id="speed-value">5</span> (Normal)</div>
+      </div>
+      <button id="start-game-btn">Start Game</button>
+    </div>
+    
+    <div class="score-container">
+      <div>Score: <span id="score">0</span></div>
+      <div>High Score: <span id="high-score">0</span></div>
+    </div>
     <canvas id="game-board" width="300" height="300"></canvas>
     <div class="controls">
-      <button id="start-btn">Start Game</button>
-      <button id="reset-btn">Reset</button>
+      <button id="restart-btn">Restart</button>
+      <button id="settings-btn">Settings</button>
     </div>
     
     <!-- D-Pad Control for Mobile -->
@@ -154,7 +172,9 @@
     <div class="game-over" id="game-over">
       <h2>Game Over!</h2>
       <p>Your final score: <span id="final-score">0</span></p>
+      <p>High score: <span id="final-high-score">0</span></p>
       <button id="play-again-btn">Play Again</button>
+      <button id="return-settings-btn">Change Settings</button>
     </div>
   </div>
 
@@ -162,12 +182,19 @@
     // Game variables
     const canvas = document.getElementById('game-board');
     const ctx = canvas.getContext('2d');
-    const startBtn = document.getElementById('start-btn');
-    const resetBtn = document.getElementById('reset-btn');
+    const settingsPanel = document.getElementById('settings-panel');
+    const startGameBtn = document.getElementById('start-game-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    const settingsBtn = document.getElementById('settings-btn');
     const gameOverElement = document.getElementById('game-over');
     const finalScoreElement = document.getElementById('final-score');
+    const finalHighScoreElement = document.getElementById('final-high-score');
     const playAgainBtn = document.getElementById('play-again-btn');
+    const returnSettingsBtn = document.getElementById('return-settings-btn');
     const scoreElement = document.getElementById('score');
+    const highScoreElement = document.getElementById('high-score');
+    const speedSlider = document.getElementById('speed-slider');
+    const speedValue = document.getElementById('speed-value');
     
     // D-pad buttons
     const upBtn = document.getElementById('up-btn');
@@ -193,8 +220,30 @@
     let dx = gridSize;
     let dy = 0;
     let score = 0;
+    let highScore = 0;
     let gameRunning = false;
     let gameLoop;
+    let gameSpeed = 5; // Default speed (1-10)
+    
+    // Load high score from local storage
+    if(localStorage.getItem('snakeHighScore')) {
+      highScore = parseInt(localStorage.getItem('snakeHighScore'));
+      highScoreElement.textContent = highScore;
+    }
+    
+    // Update speed value display
+    speedSlider.addEventListener('input', function() {
+      gameSpeed = parseInt(this.value);
+      speedValue.textContent = gameSpeed;
+      
+      // Update speed description
+      let speedDescription;
+      if (gameSpeed <= 3) speedDescription = "(Slow)";
+      else if (gameSpeed <= 7) speedDescription = "(Normal)";
+      else speedDescription = "(Fast)";
+      
+      speedValue.textContent = gameSpeed + " " + speedDescription;
+    });
     
     // Initialize the game
     function initGame() {
@@ -212,12 +261,19 @@
       // Reset score
       score = 0;
       scoreElement.textContent = score;
+      highScoreElement.textContent = highScore;
       
       // Place food
       placeFood();
       
       // Hide game over screen
       gameOverElement.style.display = 'none';
+      
+      // Show canvas and controls
+      canvas.style.display = 'block';
+      document.querySelector('.controls').style.display = 'flex';
+      document.querySelector('.d-pad').style.display = 'grid';
+      document.querySelector('.score-container').style.display = 'flex';
     }
     
     // Place food in a random position
@@ -308,12 +364,25 @@
         score += 10;
         scoreElement.textContent = score;
         
+        // Update high score if needed
+        if (score > highScore) {
+          highScore = score;
+          highScoreElement.textContent = highScore;
+          localStorage.setItem('snakeHighScore', highScore);
+        }
+        
         // Place new food
         placeFood();
       } else {
         // Remove tail
         snake.pop();
       }
+    }
+    
+    // Calculate game interval based on speed setting
+    function getGameInterval() {
+      // Map speed (1-10) to interval (200ms-50ms)
+      return 200 - ((gameSpeed - 1) * 15);
     }
     
     // Game loop
@@ -327,24 +396,40 @@
       clearInterval(gameLoop);
       gameRunning = false;
       finalScoreElement.textContent = score;
+      finalHighScoreElement.textContent = highScore;
       gameOverElement.style.display = 'block';
     }
     
-    // Start game
-    function startGame() {
-      if (!gameRunning) {
-        initGame();
-        gameRunning = true;
-        gameLoop = setInterval(gameStep, 100);
-      }
+    // Start game from settings
+    function startGameFromSettings() {
+      settingsPanel.style.display = 'none';
+      initGame();
+      gameRunning = true;
+      gameLoop = setInterval(gameStep, getGameInterval());
     }
     
-    // Reset game
-    function resetGame() {
-      clearInterval(gameLoop);
-      gameRunning = false;
+    // Restart game
+    function restartGame() {
+      if (gameRunning) {
+        clearInterval(gameLoop);
+      }
       initGame();
-      draw();
+      gameRunning = true;
+      gameLoop = setInterval(gameStep, getGameInterval());
+    }
+    
+    // Show settings
+    function showSettings() {
+      if (gameRunning) {
+        clearInterval(gameLoop);
+        gameRunning = false;
+      }
+      canvas.style.display = 'none';
+      document.querySelector('.controls').style.display = 'none';
+      document.querySelector('.d-pad').style.display = 'none';
+      document.querySelector('.score-container').style.display = 'none';
+      gameOverElement.style.display = 'none';
+      settingsPanel.style.display = 'block';
     }
     
     // Change snake direction
@@ -362,9 +447,11 @@
     }
     
     // Event listeners for buttons
-    startBtn.addEventListener('click', startGame);
-    resetBtn.addEventListener('click', resetGame);
-    playAgainBtn.addEventListener('click', startGame);
+    startGameBtn.addEventListener('click', startGameFromSettings);
+    restartBtn.addEventListener('click', restartGame);
+    settingsBtn.addEventListener('click', showSettings);
+    playAgainBtn.addEventListener('click', restartGame);
+    returnSettingsBtn.addEventListener('click', showSettings);
     
     // D-pad event listeners
     upBtn.addEventListener('touchstart', function(e) {
@@ -428,7 +515,7 @@
       }
     });
     
-    // Handle touch events for mobile swipe controls (optional additional method)
+    // Handle touch events for mobile swipe controls
     let touchStartX = 0;
     let touchStartY = 0;
     
@@ -471,10 +558,14 @@
       }
     }, false);
     
-    // Initialize game on load
+    // Initialize with settings panel showing
     window.onload = function() {
-      initGame();
-      draw();
+      canvas.style.display = 'none';
+      document.querySelector('.controls').style.display = 'none';
+      document.querySelector('.d-pad').style.display = 'none';
+      settingsPanel.style.display = 'block';
+      speedSlider.value = gameSpeed;
+      speedValue.textContent = gameSpeed + " (Normal)";
     };
   </script>
 </body>
